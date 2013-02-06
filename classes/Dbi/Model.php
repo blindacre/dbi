@@ -278,10 +278,10 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 		$joined = array_shift($args);
 		if (!$name) $name = '___' . $joined;
 		//if (count(array_keys(self::$_joinStack, $joined)) > 1) {
-		if (get_class($this->_model) == $joined || in_array($joined, self::$_joinStack)) {
+		if (get_class($this) == $joined || in_array($joined, self::$_joinStack)) {
 			return;
 		}
-		self::$_joinStack[] = get_class($this->_model);
+		self::$_joinStack[] = get_class($this);
 		self::$_joinStack[] = $joined;
 		$model = null;
 		if (is_string($joined)) {
@@ -320,7 +320,7 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 		if (in_array($joined, self::$_joinStack)) {
 			return;
 		}
-		self::$_joinStack[] = get_class($this->_model);
+		self::$_joinStack[] = get_class($this);
 		self::$_joinStack[] = $joined;
 		$model = null;
 		if (is_string($joined)) {
@@ -368,7 +368,7 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 	 * Add a where clause to the query.
 	 * @param string $statement A parameterized statement (e.g., "name = ?")
 	 * @param scalar|array $args,... Arguments for statement parameters.
-	 * @return Dbi_Query_Criteria An object that can be used to chain clauses.
+	 * @return Dbi_Sql_Criteria An object that can be used to chain clauses.
 	 */
 	public function where() {
 		$args = func_get_args();
@@ -378,15 +378,16 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 	 * Add a where clause to the query.
 	 * @param string $statement A parameterized statement (e.g., "name = ?")
 	 * @param scalar|array $args,... Arguments for statement parameters.
-	 * @return Dbi_Query_Criteria An object that can be used to chain clauses.
+	 * @return Dbi_Sql_Criteria An object that can be used to chain clauses.
 	 */
 	public function andWhere() {
 		$args = func_get_args();
-		if ( (count($args) == 1) && (is_null($args[0])) ) {
-			$this->_wheres = array();
-			return null;
-		}
-		$criteria = new Dbi_Query_Criteria($this, new Dbi_Query_Expression($args));
+		$statement = array_shift($args);
+		//if ( (count($args) == 1) && (is_null($args[0])) ) {
+		//	$this->_wheres = array();
+		//	return null;
+		//}
+		$criteria = new Dbi_Sql_Criteria($this, new Dbi_Sql_Expression($statement, $args));
 		$this->_wheres[] = $criteria;
 		return $criteria;
 	}
@@ -394,14 +395,15 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 	 * Append a where clause using OR to the most recently added where clause.
 	 * @param string $statement A parameterized statement (e.g., "name = ?")
 	 * @param scalar|array $args,... Arguments for statement parameters.
-	 * @return Dbi_Query_Criteria An object that can be used to chain clauses.
+	 * @return Dbi_Sql_Criteria An object that can be used to chain clauses.
 	 */
 	public function orWhere() {
 		$args = func_get_args();
 		if (count($this->_wheres)) {
 			$criteria = call_user_func_array(array($this->_wheres[count($this->_wheres)- 1], 'orWhere'), $args);
 		} else {
-			$criteria = new Dbi_Query_Criteria($this, new Dbi_Query_Expression($args));
+			$statement = array_shift($args);
+			$criteria = new Dbi_Sql_Criteria($this, new Dbi_Sql_Expression($statement, $args));
 			$this->_wheres[] = $criteria;
 		}
 		return $criteria;
@@ -418,11 +420,8 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 	}
 	public function andHaving() {
 		$args = func_get_args();
-		if ( (count($args) == 1) && (is_null($args[0])) ) {
-			$this->_haves = array();
-			return null;
-		}
-		$criteria = new Dbi_Query_Criteria($this, new Dbi_Query_Expression($args));
+		$statement = array_shift($args);
+		$criteria = new Dbi_Sql_Criteria($this, new Dbi_Sql_Expression($statement, $args));
 		$this->_haves[] = $criteria;
 		return $criteria;
 	}
@@ -431,7 +430,8 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 		if (count($this->_haves)) {
 		 call_user_func_array(array($this->_haves[count($this->_wheres)- 1], 'orWhere'), $args);
 		} else {
-			$criteria = new Dbi_Query_Criteria($this, new Dbi_Query_Expression($args));
+			$statement = array_shift($args);
+			$criteria = new Dbi_Sql_Criteria($this, new Dbi_Sql_Expression($statement, $args));
 			$this->_haves[] = $criteria;
 		}
 		return $criteria;
@@ -463,28 +463,11 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 		}
 	}
 	/**
-	 * Get an associative array of all the query's components.
-	 * @return Dbi_Query_Components A property iterator of the component data.
+	 * Get an object containing the model's query components.
+	 * @return Dbi_Model_QueryComponents A property iterator of the component data.
 	 */
 	public function components() {
-		// TODO: The 'table' value passed in the components does NOT
-		// include the prefix. This currently works for Dbi_Source_MySql,
-		// but might not be the most intuitive way to handle prefixes.
-		/*$components = array(
-			'table' => $this->name(),
-			'where' => $this->_wheres,
-			'fields' => $this->_fields,
-			'subqueries' => $this->_subqueries,
-			'innerJoins' => $this->_innerJoins,
-			'leftJoins' => $this->_leftJoins,
-			'orders' => $this->_orders,
-			'limit' => $this->_limit,
-			'groups' => $this->_group
-		);*/
-		// TODO: Make an internal Dbi_Query_Components object that can be
-		// updated by relevant methods (e.g., $this->where()) and doesn't have
-		// to be rebuilt for each call to the components() method.
-		$components = new Dbi_Query_Components();
+		$components = new Dbi_Model_QueryComponents();
 		$components->table = $this->name();
 		$components->where = $this->_wheres;
 		$components->fields = $this->_fields;

@@ -1,7 +1,7 @@
 <?php
 class Dbi_Source_MySqli extends Dbi_Source {
 	private $_connection;
-	private function _build(BuildSql_Select $select, Dbi_Model $query, $components, $parent = '', $forceLeft = false) {
+	private function _build(Dbi_Sql_Query_Select $select, Dbi_Model $query, $components, $parent = '', $forceLeft = false) {
 		$subs = array();
 		if (count($components['fields'])) {
 			$select->field($components['fields']);
@@ -14,13 +14,13 @@ class Dbi_Source_MySqli extends Dbi_Source {
 				}
 			}
 			foreach ($components['innerJoins'] as $innerJoin) {
-				$subquery = $innerJoin['model']->query();
+				$subquery = $innerJoin['model'];
 				$subcomponents = $subquery->components();
 				$subcomponents['table'] = $innerJoin['name'];
 				$subs[] = array('query' => $subquery, 'components' => $subcomponents, 'forceLeft' => false);
 			}
 			foreach ($components['leftJoins'] as $join) {
-				$subquery = $join['model']->query();
+				$subquery = $join['model'];
 				$subcomponents = $subquery->components();
 				$subcomponents['table'] = $join['name'];
 				$subs[] = array('query' => $subquery, 'components' => $subcomponents, 'forceLeft' => true);
@@ -33,7 +33,7 @@ class Dbi_Source_MySqli extends Dbi_Source {
 			$orParameters = array();
 			foreach ($where->expressions() as $or) {
 				$statement = $or->statement();
-				$tokens = Dbi_Query_Tokenizer::Tokenize($statement);
+				$tokens = Dbi_Sql_Tokenizer::Tokenize($statement);
 				foreach ($tokens as &$token) {
 					if (in_array($token, $fields)) {
 						$token = "{$parent}{$components['table']}.{$token}";
@@ -51,7 +51,7 @@ class Dbi_Source_MySqli extends Dbi_Source {
 		foreach ($components['innerJoins'] as $join) {
 			$args = $join['args'];
 			array_unshift($args, $join['model']->prefix() . $join['model']->name() . ' AS `' . $parent . $join['name'] . '`');
-			$tokens = Dbi_Query_Tokenizer::Tokenize($args[1]);
+			$tokens = Dbi_Sql_Tokenizer::Tokenize($args[1]);
 			foreach ($tokens as &$token) {
 				if (in_array($token, $fields)) {
 					$token = '`' . ($parent ? substr($parent, 0, -1) : $components['table']) . "`.`{$token}`";
@@ -71,7 +71,7 @@ class Dbi_Source_MySqli extends Dbi_Source {
 		foreach ($components['leftJoins'] as $join) {
 			$args = $join['args'];
 			array_unshift($args, $join['model']->prefix() . $join['model']->name() . ' AS `' . $parent . $join['name'] . '`');
-			$tokens = Dbi_Query_Tokenizer::Tokenize($args[1]);
+			$tokens = Dbi_Sql_Tokenizer::Tokenize($args[1]);
 			foreach ($tokens as &$token) {
 				if (in_array($token, $fields)) {
 					//$token = "`{$components['table']}`.`{$token}`";
@@ -91,7 +91,7 @@ class Dbi_Source_MySqli extends Dbi_Source {
 			$orParameters = array();
 			foreach ($having->expressions() as $or) {
 				$statement = $or->statement();
-				$tokens = Dbi_Query_Tokenizer::Tokenize($statement);
+				$tokens = Dbi_Sql_Tokenizer::Tokenize($statement);
 				foreach ($tokens as &$token) {
 					if (in_array($token, $fields)) {
 						$token = "{$parent}{$components['table']}.{$token}";
@@ -111,7 +111,8 @@ class Dbi_Source_MySqli extends Dbi_Source {
 		}
 	}
 	private function _generateSql(Dbi_Model $query) {
-		$select = new BuildSql_Select('mysqli_real_escape_string');
+		//$select = new BuildSql_Select('mysqli_real_escape_string');
+		$select = new Dbi_Sql_Query_Select();
 		$components = $query->components();
 		// Table
 		$select->table($query->prefix() . $components['table'] . ' AS ' . $components['table']);
@@ -133,19 +134,17 @@ class Dbi_Source_MySqli extends Dbi_Source {
 		return $select;
 	}
 	public function select(Dbi_Model $query) {
-		self::$queryCount++;
 		$select = $this->_generateSql($query);
 		$components = $query->components();
-		return $this->_execute($select->query(), $query);
+		return new Dbi_Recordset_MySqli($query, $this->_execute($select, $query));
 	}
 	public function analyze(Dbi_Model $query) {
 		$select = $this->_generateSql($query);
 		return $select->query();
 	}
 	public function update(Dbi_Model $query, array $data) {
-		self::$queryCount++;
 		$components = $query->components();
-		$update = new BuildSql_Update();
+		$update = new Dbi_Sql_Query_Update();
 		$update->table($query->prefix() . $components['table']);
 		foreach ($components['where'] as $where) {
 			$orStatements = array();
@@ -159,7 +158,7 @@ class Dbi_Source_MySqli extends Dbi_Source {
 		}
 		// Get rid of fields that are not defined in the schema.
 		// TODO: Should undefined fields generate an error?
-		foreach ($data as $key => $value) {
+		/*foreach ($data as $key => $value) {
 			if (is_null($query->field($key))) {
 				unset($data[$key]);
 			} else {
@@ -170,15 +169,18 @@ class Dbi_Source_MySqli extends Dbi_Source {
 				}
 			}
 		}
-		$update->set($data);
-		$this->_connection->query($update->query());
+		$update->set($data);*/
+		foreach ($data as $key => $value) {
+			$update->set("`{$key}` = ?", $value);
+		}
+		//$this->_connection->query($update->query());
+		$this->_execute($update, $query);
 		if ($this->_connection->errno) {
 			echo "{$update->query()}<br/>";
 			throw new Exception($this->_connection->error);
 		}
 	}
 	public function insert(Dbi_Record $record) {
-		self::$queryCount++;
 		$data = $record->getArray(!$this->enforceSchemas);
 		// Get rid of fields that are not defined in the schema.
 		// TODO: Should undefined fields generate an error?
@@ -193,23 +195,31 @@ class Dbi_Source_MySqli extends Dbi_Source {
 				}
 			}
 		}
-		$insert = new BuildSql_Insert($record->model()->prefix() . $record->model()->name(), $data);
-		$this->_connection->query($insert->query());
-		if ($this->_connection->errno) {
-			throw new Exception($this->_connection->error);
+		$insert = new Dbi_Sql_Query_Insert(); //($record->model()->prefix() . $record->model()->name(), $data);
+		//$this->_connection->query($insert->query());
+		//if ($this->_connection->errno) {
+		//	throw new Exception($this->_connection->error);
+		//}
+		$insert->table($record->model()->prefix() . $record->model()->name());
+		foreach ($data as $key => $value) {
+			$insert->set($key, $value);
 		}
+		$stmt = $this->_execute($insert, $record->model());
+		if ($stmt->errno) {
+			throw new Exception($stmt->error);
+		}
+		//var_dump($result);die;
 		$primary = $record->model()->index('primary');
 		if ( (is_array($primary)) && (count($primary['fields']) == 1) ) {
-			$data[$primary['fields'][0]] = $this->_connection->insert_id();
+			$data[$primary['fields'][0]] = $stmt->insert_id;
 		}
 		// Return the data that was saved so Dbi_Record objects can update
 		// automatically generated primary keys
 		return $data;
 	}
 	public function delete(Dbi_Model $query) {
-		self::$queryCount++;
 		$components = $query->components();
-		$delete = new BuildSql_Delete();
+		$delete = new Dbi_Sql_Query_Delete();
 		$delete->table($query->prefix() . $components['table']);
 		foreach ($components['where'] as $where) {
 			$orStatements = array();
@@ -221,7 +231,9 @@ class Dbi_Source_MySqli extends Dbi_Source {
 			$args = array_merge(array(implode(' OR ', $orStatements)), $orParameters);
 			call_user_func_array(array($delete, 'where'), $args);
 		}
-		$this->_conneciton->query($delete->query());
+		$expression = $delete->expression();
+		//var_dump($expression);die;
+		$this->_execute($delete, $query);
 		if ($this->_connection->errno) {
 			throw new Exception($this->_connection->error);
 		}
@@ -457,14 +469,31 @@ class Dbi_Source_MySqli extends Dbi_Source {
 		}
 		return $col;
 	}
-	private function _execute($sql, Dbi_Model $model) {
-		//Typeframe::Database()->queries++;
-		$rs = $this->_connection->query($sql);
-		if ($this->_connection->errno) {
-			echo "{$sql}<br/>";
+	/**
+	 * Execute a query.
+	 * @param Dbi_Sql_Query $query
+	 * @return mysqli_stmt
+	 */
+	private function _execute(Dbi_Sql_Query $query) {
+		self::$queryCount++;
+		$expression = $query->expression();
+		$stmt = $this->_connection->prepare($expression->statement());
+		if (!$stmt) {
 			throw new Exception($this->_connection->error);
 		}
-		return new Dbi_Recordset_MySqli($model, $rs);
+		$parameters = $expression->parameters();
+		if (count($parameters)) {
+			$types = '';
+			$refs = array();
+			foreach ($parameters as &$p) {
+				$types .= "s";
+				$refs[] =& $p;
+			}
+			call_user_func_array(array($stmt, 'bind_param'), array_merge(array($types), $refs)) or die('hmm');
+		}
+		$stmt->execute();
+		$stmt->store_result();
+		return $stmt;
 	}
 	public function __construct($host, $username, $password, $database) {
 		$this->_connection = mysqli_connect($host, $username, $password, $database);
@@ -472,10 +501,24 @@ class Dbi_Source_MySqli extends Dbi_Source {
 	public function connection() {
 		return $this->_connection;
 	}
+	/**
+	 * Execute raw code.
+	 * @param string $code
+	 * @return Dbi_Recordset[]
+	 */
 	public function execute($code) {
-		// TODO: This function should accept prepared statements and arguments.
-		// OR maybe it should just accept a BuildSql object.
-		//$code = str_replace('#__', DBI_PREFIX, $code);
-		return $this->_execute($code, new Dbi_Model_Anonymous());
+		$stmt = $this->_connection->prepare($code);
+		$stmt->execute();
+		$stmt->store_result();
+		return new Dbi_Recordset_MySqli(new Dbi_Model_Anonymous(), $stmt);
+	}
+	/**
+	 * Execute a query.
+	 * @param Dbi_Sql $query
+	 * @return Dbi_Recordset[]
+	 */
+	public function query(Dbi_Sql_Query $query) {
+		$stmt = $this->_execute($query);
+		return new Dbi_RecordSet_MySqli(new Dbi_Model_Anonymous(), $stmt);
 	}
 }

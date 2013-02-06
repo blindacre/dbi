@@ -1,22 +1,31 @@
 <?php
 class Dbi_Recordset_MySqli extends Dbi_Recordset {
 	private $_model;
-	private $_result;
+	private $_statement;
 	private $_key = false;
 	private $_current;
 	private $_cache = array();
-	public function __construct(Dbi_Model $model, $result) {
+	private $_bound = array();
+	public function __construct(Dbi_Model $model, $statement) {
 		$this->_model = $model;
-		$this->_result = $result;
+		$variables = array();
+		$this->_statement = $statement;
+        $meta = $this->_statement->result_metadata();
+		if ($meta) {
+			while($field = $meta->fetch_field()) {
+				$variables[] = &$this->_bound[$field->name]; // pass by reference
+			}
+			call_user_func_array(array($statement, 'bind_result'), $variables);
+		}
 		$this->_key = false;
 		$this->_current = null;
 	}
 	public function count() {
-		return mysqli_num_rows($this->_result);
+		return $this->_statement->num_rows;
 	}
 	public function rewind() {
-		if (mysqli_num_rows($this->_result) > 0) {
-			mysqli_data_seek($this->_result, 0);
+		if ($this->_statement->num_rows > 0) {
+			$this->_statement->data_seek(0);
 			$this->_key = -1;
 			$this->next();
 		}
@@ -43,7 +52,8 @@ class Dbi_Recordset_MySqli extends Dbi_Recordset {
 			$this->_current = $this->_cache[$this->_key + 1];
 			$this->_key++;
 		} else {
-			if ($row = mysqli_fetch_assoc($this->_result)) {
+			if ($this->_statement->fetch()) {
+				$row = (array)$this->_bound;
 				$joined = array();
 				foreach ($row as $key => $value) {
 					if (is_null($value)) {
@@ -71,7 +81,7 @@ class Dbi_Recordset_MySqli extends Dbi_Recordset {
 				foreach ($subqueries as $subquery) {
 					$cls = $subquery['model'];
 					$m = new $cls();
-					$tokens = Dbi_Query_Tokenizer::Tokenize($subquery['statement']);
+					$tokens = Dbi_Sql_Tokenizer::Tokenize($subquery['statement']);
 					// TODO: This token replacement is apparently limited in that it
 					// will only work for two levels of subqueries. I say "apparently"
 					// because I'm not completely sure how or why it works.
@@ -106,17 +116,17 @@ class Dbi_Recordset_MySqli extends Dbi_Recordset {
 	}
 	public function offsetExists($offset) {
 		$index = (int)$offset;
-		return ($index >= 0 && $index < mysqli_num_rows($this->_result));
+		return ($index >= 0 && $index < $this->_result->num_rows);
 	}
 	public function offsetGet($offset) {
 		$index = (int)$offset;
 		if ($this->_key !== false && $this->_key == $index) return $this->_current;
 		$currentKey = $this->_key;
-		mysqli_data_seek($this->_result, $index);
+		$this->_statement->data_seek($index);
 		$this->next();
 		$record = $this->_current;
 		$this->_key = $currentKey;
-		if ($this->_key !== false) mysqli_data_seek($this->_result, $this->_key);
+		if ($this->_key !== false) $this->_statement->data_seek($this->_key);
 		return $record;
 	}
 }

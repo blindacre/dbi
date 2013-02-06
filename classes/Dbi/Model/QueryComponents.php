@@ -13,7 +13,7 @@
  * @property array $groups
  * @property array $having
  */
-class Dbi_Query_Components extends PropertyIteratorAbstract {
+class Dbi_Model_QueryComponents extends PropertyIteratorAbstract {
 	public function __construct() {
 		parent::__construct();
 		$this->subqueries = array();

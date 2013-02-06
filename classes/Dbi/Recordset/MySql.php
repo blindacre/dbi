@@ -71,7 +71,7 @@ class Dbi_Recordset_MySql extends Dbi_Recordset {
 				foreach ($subqueries as $subquery) {
 					$cls = $subquery['model'];
 					$m = new $cls();
-					$tokens = Dbi_Query_Tokenizer::Tokenize($subquery['statement']);
+					$tokens = Dbi_Sql_Tokenizer::Tokenize($subquery['statement']);
 					// TODO: This token replacement is apparently limited in that it
 					// will only work for two levels of subqueries. I say "apparently"
 					// because I'm not completely sure how or why it works.

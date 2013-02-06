@@ -14,13 +14,13 @@ class Dbi_Source_MySql extends Dbi_Source {
 				}
 			}
 			foreach ($components['innerJoins'] as $innerJoin) {
-				$subquery = $innerJoin['model']->query();
+				$subquery = $innerJoin['model'];
 				$subcomponents = $subquery->components();
 				$subcomponents['table'] = $innerJoin['name'];
 				$subs[] = array('query' => $subquery, 'components' => $subcomponents, 'forceLeft' => false);
 			}
 			foreach ($components['leftJoins'] as $join) {
-				$subquery = $join['model']->query();
+				$subquery = $join['model'];
 				$subcomponents = $subquery->components();
 				$subcomponents['table'] = $join['name'];
 				$subs[] = array('query' => $subquery, 'components' => $subcomponents, 'forceLeft' => true);
@@ -33,7 +33,7 @@ class Dbi_Source_MySql extends Dbi_Source {
 			$orParameters = array();
 			foreach ($where->expressions() as $or) {
 				$statement = $or->statement();
-				$tokens = Dbi_Query_Tokenizer::Tokenize($statement);
+				$tokens = Dbi_Sql_Tokenizer::Tokenize($statement);
 				foreach ($tokens as &$token) {
 					if (in_array($token, $fields)) {
 						$token = "{$parent}{$components['table']}.{$token}";
@@ -51,7 +51,7 @@ class Dbi_Source_MySql extends Dbi_Source {
 		foreach ($components['innerJoins'] as $join) {
 			$args = $join['args'];
 			array_unshift($args, $join['model']->prefix() . $join['model']->name() . ' AS `' . $parent . $join['name'] . '`');
-			$tokens = Dbi_Query_Tokenizer::Tokenize($args[1]);
+			$tokens = Dbi_Sql_Tokenizer::Tokenize($args[1]);
 			foreach ($tokens as &$token) {
 				if (in_array($token, $fields)) {
 					$token = '`' . ($parent ? substr($parent, 0, -1) : $components['table']) . "`.`{$token}`";
@@ -71,7 +71,7 @@ class Dbi_Source_MySql extends Dbi_Source {
 		foreach ($components['leftJoins'] as $join) {
 			$args = $join['args'];
 			array_unshift($args, $join['model']->prefix() . $join['model']->name() . ' AS `' . $parent . $join['name'] . '`');
-			$tokens = Dbi_Query_Tokenizer::Tokenize($args[1]);
+			$tokens = Dbi_Sql_Tokenizer::Tokenize($args[1]);
 			foreach ($tokens as &$token) {
 				if (in_array($token, $fields)) {
 					//$token = "`{$components['table']}`.`{$token}`";
@@ -91,7 +91,7 @@ class Dbi_Source_MySql extends Dbi_Source {
 			$orParameters = array();
 			foreach ($having->expressions() as $or) {
 				$statement = $or->statement();
-				$tokens = Dbi_Query_Tokenizer::Tokenize($statement);
+				$tokens = Dbi_Sql_Tokenizer::Tokenize($statement);
 				foreach ($tokens as &$token) {
 					if (in_array($token, $fields)) {
 						$token = "{$parent}{$components['table']}.{$token}";
@@ -458,10 +458,8 @@ class Dbi_Source_MySql extends Dbi_Source {
 		return $col;
 	}
 	private function _execute($sql, Dbi_Model $model) {
-		//Typeframe::Database()->queries++;
 		$rs = mysql_query($sql);
 		if (mysql_error()) {
-			echo "{$sql}<br/>";
 			throw new Exception(mysql_error());
 		}
 		return new Dbi_Recordset_MySql($model, $rs);
