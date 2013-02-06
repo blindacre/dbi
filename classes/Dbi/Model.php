@@ -227,11 +227,10 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 			if (count($primary['fields']) > 1) {
 				throw new Exception("The schema for {$cls} has more than one field in its primary key");
 			}
-			$model->query()->where("{$primary['fields'][0]} = ?", $key);
+			$model->where("{$primary['fields'][0]} = ?", $key);
 		}
-		//$src = Dbi_Source::GetModelSource($model);
-		//$src->delete($model->query());
-		$this->source->delete($model);
+		$src = Dbi_Source::GetModelSource($model);
+		$src->delete($model);
 	}
 	/**
 	 * Create a new record.

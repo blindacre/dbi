@@ -38,7 +38,7 @@ class Dbi_Sql_Criteria {
 	public function orWhere($expression) {
 		$args = func_get_args();
 		$expr = array_shift($args);
-		$expression = new Dbi_Query_Expression($expr, $args);
+		$expression = new Dbi_Sql_Expression($expr, $args);
 		$this->_expressions[] = $expression;
 		return $this;
 	}
