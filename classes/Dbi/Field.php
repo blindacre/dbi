@@ -5,15 +5,13 @@ class Dbi_Field implements Event_SubjectInterface {
 	private $_arguments;
 	private $_defaultValue;
 	private $_allowNull;
-	private $_updateRule;
 	private $_extras;
 	private $_eventObservers = array();
-	public function __construct($type, $arguments = array(), $defaultValue = '', $allowNull = false, $updateRule = '', $extras = array()) {
+	public function __construct($type, $arguments = array(), $defaultValue = '', $allowNull = false, $extras = array()) {
 		$this->_type = $type;
 		$this->_arguments = $arguments;
 		$this->_defaultValue = $defaultValue;
 		$this->_allowNull = $allowNull;
-		$this->_updateRule = $updateRule;
 		$this->_extras = $extras;
 	}
 	/**
@@ -25,8 +23,8 @@ class Dbi_Field implements Event_SubjectInterface {
 	}
 	/**
 	 * An array of arguments to be applied to the field type. Typical arguments
-	 * include the size of an integer, the length of a text field, or the possible
-	 * values of an enum.
+	 * include the size of an integer, the length of a text field, or the values
+	 * of an enum.
 	 * @return array
 	 */
 	public function arguments() {
@@ -46,15 +44,6 @@ class Dbi_Field implements Event_SubjectInterface {
 	 */
 	public function allowNull() {
 		return $this->_allowNull;
-	}
-	/**
-	 * Get the rule to run on this field when saving to the database. Possible values:
-	 *	ctime: Timestamp when the record was created
-	 *  mtime: Timestamp when the record was modified
-	 * @return string The update rule
-	 */
-	public function updateRule() {
-		return $this->_updateRule;
 	}
 	/**
 	 * An array of extra information about the field.
