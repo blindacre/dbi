@@ -68,7 +68,7 @@ class Dbi_Sql_Query_Select extends Dbi_Sql_QueryWhere {
 		if (count($this->_havings)) {
 			$append = "\nHAVING ";
 			foreach ($this->_havings as $having) {
-				$sql .= "\n{$append} (" . $where->statement() . ")";
+				$sql .= "\n{$append} (" . $having->statement() . ")";
 				$parameters = array_merge($parameters, $having->parameters());
 				$append = ' AND ';
 			}
