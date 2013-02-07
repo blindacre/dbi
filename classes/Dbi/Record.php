@@ -125,7 +125,9 @@ class Dbi_Record implements ArrayAccess, Iterator {
 		foreach ($primary['fields'] as $key) {
 			$query->where("{$key} = ?", $this->get($key));
 		}*/
-		$clone = clone($this->_model);
+		//$clone = clone($this->_model);
+		$cls = get_class($this->_model);
+		$clone = new $cls();
 		$primary = $clone->index('primary');
 		if (is_null($primary)) {
 			throw new Exception("Model does not have a primary key");
