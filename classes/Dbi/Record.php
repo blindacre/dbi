@@ -117,7 +117,8 @@ class Dbi_Record implements ArrayAccess, Iterator {
 		// TODO: Should we check to see if the record is dirty first?
 		if (!$this->exists()) return;
 		$this->_model->notify(Dbi_Model::EVENT_BEFOREDELETE, $this);
-		$clone = clone($this->_model);
+		$cls = get_class($this->_model);
+		$clone = new $cls();
 		$primary = $clone->index('primary');
 		if (is_null($primary)) {
 			throw new Exception("Model does not have a primary key");
