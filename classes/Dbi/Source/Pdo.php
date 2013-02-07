@@ -118,7 +118,6 @@ class Dbi_Source_Pdo extends Dbi_Source_SqlAbstract {
 			}
 		}
 		$stmt->execute();
-		echo "<h1>found " . $stmt->rowCount() . "</h1>";
 		return $stmt;
 	}
 }
