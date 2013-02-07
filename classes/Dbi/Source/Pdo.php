@@ -100,7 +100,8 @@ class Dbi_Source_Pdo extends Dbi_Source_SqlAbstract {
 		
 	}
 	public function execute($code) {
-		
+		$stmt = $this->_pdo->query($code);
+		return new Dbi_Recordset_Pdo(new Dbi_Model_Anonymous(), $stmt);
 	}
 	private function _execute(Dbi_Sql_Query $query) {
 		self::$queryCount++;
