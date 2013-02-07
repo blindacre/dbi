@@ -360,6 +360,11 @@ class Dbi_Source_MySql extends Dbi_Source_SqlAbstract {
 		// TODO: This function should accept prepared statements and arguments.
 		// OR maybe it should just accept a BuildSql object.
 		//$code = str_replace('#__', DBI_PREFIX, $code);
-		return $this->_execute($code, new Dbi_Model_Anonymous());
+		//return $this->_execute($code, new Dbi_Model_Anonymous());
+		$rs = mysql_query($code);
+		if (mysql_error()) {
+			throw new Exception(mysql_error());
+		}
+		return new Dbi_Recordset_MySql(new Dbi_Model_Anonymous(), $rs);
 	}
 }
