@@ -10,7 +10,8 @@ class Dbi_Source_Pdo extends Dbi_Source_SqlAbstract {
 		return new Dbi_Recordset_Pdo($model, $this->_execute($select));
 	}
 	public function analyze(Dbi_Model $model) {
-		
+		$select = $this->_generateSql($model);
+		return $select->expression()->statement();
 	}
 	public function update(Dbi_Model $query, array $data) {
 		$components = $query->components();

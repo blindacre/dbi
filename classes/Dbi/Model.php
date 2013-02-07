@@ -1,5 +1,8 @@
 <?php
 abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, Iterator, Countable {
+	/**
+	 * @var Dbi_Source
+	 */
 	protected $source;
 	/**
 	 * The event triggered any time a new or existing record gets saved. This

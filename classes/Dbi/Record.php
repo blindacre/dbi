@@ -3,7 +3,6 @@ class Dbi_Record implements ArrayAccess, Iterator {
 	private $_model;
 	private $_data = array();
 	private $_init = array();
-	//private $_extradata = array();
 	private $_dirty = false;
 	private $_exists = false;
 	private $_valid = false;
@@ -28,9 +27,7 @@ class Dbi_Record implements ArrayAccess, Iterator {
 			}
 			$this->_cleanArray($data);
 			$this->_model->notify(Dbi_Model::EVENT_AFTERSELECT, $this);
-			//$this->_init = array_merge($this->_data, $this->_extradata);
 			$this->_init = $this->_data;
-			//$this->_iteratorKeys = array_merge(array_keys($this->_data), array_keys($this->_extradata));
 			$this->_iteratorKeys = array_keys($this->_data);
 		} else if (!is_null($data)) {
 			$this->_dirty = true;
@@ -120,11 +117,6 @@ class Dbi_Record implements ArrayAccess, Iterator {
 		// TODO: Should we check to see if the record is dirty first?
 		if (!$this->exists()) return;
 		$this->_model->notify(Dbi_Model::EVENT_BEFOREDELETE, $this);
-		/*$query = new Dbi_Query($this->model());
-		$primary = $this->_model->primary();
-		foreach ($primary['fields'] as $key) {
-			$query->where("{$key} = ?", $this->get($key));
-		}*/
 		$clone = clone($this->_model);
 		$primary = $clone->index('primary');
 		if (is_null($primary)) {
@@ -169,22 +161,11 @@ class Dbi_Record implements ArrayAccess, Iterator {
 				return;
 			}
 		}
-		/*if (!is_null($this->_model->field($key))) {
-			$primary = $this->_model->index('primary');
-			if ( (!is_null($primary)) && (count($primary['fields']) == 1) && ($primary['fields'][0] == $key) && ($this->exists()) && ($this->_data[$key] != $value) ) {
-				throw new Exception('Cannot modify primary key ' . $key);
-			} else {
-				$this->_data[$key] = $value;
-			}
-		} else {
-			$this->_extradata[$key] = $value;
-		}*/
 		$this->_data[$key] = $value;
 		// Mark the record dirty if the field is in the data schema.
 		if ($this->_model->field($key)) {
 			$this->_dirty = true;
 		}
-		//$this->_iteratorKeys = array_merge(array_keys($this->_data), array_keys($this->_extradata));
 		$this->_iteratorKeys = array_keys($this->_data);
 	}
 	/**
@@ -204,9 +185,7 @@ class Dbi_Record implements ArrayAccess, Iterator {
 		$value = null;
 		if (isset($this->_data[$key])) {
 			$value =& $this->_data[$key];
-		} /*else if (isset($this->_extradata[$key])) {
-			$value =& $this->_extradata[$key];
-		}*/
+		}
 		return $value;
 	}
 	/**
@@ -281,60 +260,23 @@ class Dbi_Record implements ArrayAccess, Iterator {
 			}
 		}
 		foreach ($data as $key => $value) {
-			/*$parts = explode('.', $key, 2);
-			if (count($parts) > 1) {
-				echo "Here's a subkey: {$parts[0]}<br/>";
-				$subkey = $parts[0];
-				$subprop = $parts[1];
-				$components = $this->_model->query()->components();
-				if (isset($components['innerJoins'][$subkey])) {
-					if (!isset($joinModels[$subkey])) {
-						$joinModels[$subkey] = get_class($components['innerJoins'][$subkey]['model']);
-						$joinData[$subkey] = array();
-					}
-					$joinData[$subkey][$subprop] = $value;
-				} else {
-					throw new Exception('Bad join');
-				}
-			} else {
-				if ($this->_model->field($key)) {
-					$this->_data[$key] = $value;
-				} else {
-					$this->_extradata[$key] = $value;
-				}
-			}*/
 			if (isset($joinModels[$key])) {
 				$mod = $joinModels[$key];
 				$value = new Dbi_Record($mod, $value);
 			}
-			/*if ($this->_model->field($key)) {
-				$this->_data[$key] = $value;
-			} else {
-				$this->_extradata[$key] = $value;
-			}*/
 			$this->_data[$key] = $value;
 		}
-		//foreach ($joinModels as $key => $value) {
-		//	$this->_extradata[$key] = new Dbi_Record(new $value(), $joinData[$key]);
-		//}
 	}
 	//##################   ArrayAccess special methods.  #####################\\
 	public function offsetSet($offset, $value) {
-		//echo "Calling offsetSet in " . __CLASS__ . "!<br/>"; // DEBUG //
         $this->set($offset, $value);
     }
     public function offsetExists($offset) {
-    	// I need to use this method because it includes derived properties.
-    	//$dat = $this->getAsArray();
-        //return isset($dat[$offset]);
-		//return ( isset($this->_data[$offset]) || isset($this->_extradata[$offset]) );
 		return isset($this->_data[$offset]);
     }
     public function offsetUnset($offset) {
     	// @todo Should this be disabled?...
         unset($this->_data[$offset]);
-		//unset($this->_extradata[$offset]);
-		//$this->_iteratorKeys = array_merge(array_keys($this->_data), array_keys($this->_extradata));
 		$this->_iteratorKeys = array_keys($this->_data);
     }
     public function &offsetGet($offset) {
@@ -355,7 +297,6 @@ class Dbi_Record implements ArrayAccess, Iterator {
 	}
 	public function next() {
 		$this->_iteratorPos++;
-		//if ($this->_iteratorPos >= sizeof($this->_iteratorKeys)) $this->_iteratorPos = 0;
 		return $this->current();
 	}
 	public function valid() {

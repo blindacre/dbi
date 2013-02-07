@@ -4,8 +4,6 @@ abstract class Dbi_Schema implements Dbi_SchemaInterface {
 	protected $prefix = null;
 	protected $fieldset = array();
 	protected $indexes = array();
-	// Even though this constructor does nothing, we need to declare it so
-	// SimpleTest can create mocks
 	public function __construct() {
 		
 	}

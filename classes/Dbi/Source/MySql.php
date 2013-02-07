@@ -9,7 +9,8 @@ class Dbi_Source_MySql extends Dbi_Source_SqlAbstract {
 	}
 	public function analyze(Dbi_Model $query) {
 		$select = $this->_generateSql($query);
-		return $select->query();
+		$code = $this->_bindParameters($select);
+		return $code;
 	}
 	public function update(Dbi_Model $query, array $data) {
 		self::$queryCount++;
