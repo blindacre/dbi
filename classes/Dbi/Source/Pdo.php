@@ -7,10 +7,12 @@ class Dbi_Source_Pdo extends Dbi_Source_SqlAbstract {
 	}
 	public function select(Dbi_Model $model) {
 		$select = $this->_generateSql($model);
-		return new Dbi_Recordset_Pdo($model, $this->_execute($select));
+		$stmt = $this->_execute($select);
+		return new Dbi_Recordset_Pdo($model, $stmt);
 	}
 	public function analyze(Dbi_Model $model) {
-		
+		$select = $this->_generateSql($model);
+		return $select->expression()->statement();
 	}
 	public function update(Dbi_Model $query, array $data) {
 		$components = $query->components();
@@ -29,12 +31,7 @@ class Dbi_Source_Pdo extends Dbi_Source_SqlAbstract {
 		foreach ($data as $key => $value) {
 			$update->set("`{$key}` = ?", $value);
 		}
-		$this->_execute($update, $query);
-		if ($this->_pdo->errorCode() != '00000') {
-			$info = $this->_pdo->errorInfo();
-			var_dump($info);
-			throw new Exception($info[2]);
-		}
+		$this->_execute($update);
 	}
 	public function insert(Dbi_Record $record) {
 		$data = $record->getArray(!$this->enforceSchemas);
@@ -61,11 +58,6 @@ class Dbi_Source_Pdo extends Dbi_Source_SqlAbstract {
 			$insert->set($key, $value);
 		}
 		$stmt = $this->_execute($insert);
-		if ($stmt->errorCode() != '00000') {
-			$info = $stmt->errorInfo();
-			throw new Exception($info[2]);
-		}
-		//var_dump($result);die;
 		$primary = $record->model()->index('primary');
 		if ( (is_array($primary)) && (count($primary['fields']) == 1) ) {
 			$data[$primary['fields'][0]] = $this->_pdo->lastInsertId();
@@ -89,19 +81,24 @@ class Dbi_Source_Pdo extends Dbi_Source_SqlAbstract {
 			call_user_func_array(array($delete, 'where'), $args);
 		}
 		$expression = $delete->expression();
-		//var_dump($expression);die;
-		$this->_execute($delete, $query);
-		if ($this->_pdo->errorCode() != '00000') {
-			$info = $stmt->errorInfo();
-			throw new Exception($info[2]);
-		}
+		$this->_execute($delete);
 	}
 	public function configureSchema(Dbi_Schema $schema, $alterExistingFields = false) {
 		
 	}
 	public function execute($code) {
-		
+		$stmt = $this->_pdo->query($code);
+		if (!$stmt) {
+			$info = $this->_pdo->errorInfo();
+			throw new Exception($info[2]);
+		}
+		return new Dbi_Recordset_Pdo(new Dbi_Model_Anonymous(), $stmt);
 	}
+	/**
+	 * 
+	 * @param Dbi_Sql_Query $query
+	 * @return PDOStatement
+	 */
 	private function _execute(Dbi_Sql_Query $query) {
 		self::$queryCount++;
 		$expression = $query->expression();
@@ -118,7 +115,13 @@ class Dbi_Source_Pdo extends Dbi_Source_SqlAbstract {
 			}
 		}
 		$stmt->execute();
-		echo "<h1>found " . $stmt->rowCount() . "</h1>";
+		if ($stmt->errorCode() != '00000') {
+			$info = $stmt->errorInfo();
+			throw new Exception($info[2]);
+		}
 		return $stmt;
+	}
+	public function connection() {
+		return $this->_pdo;
 	}
 }

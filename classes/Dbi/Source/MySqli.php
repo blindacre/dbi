@@ -8,7 +8,7 @@ class Dbi_Source_MySqli extends Dbi_Source_SqlAbstract {
 	}
 	public function analyze(Dbi_Model $query) {
 		$select = $this->_generateSql($query);
-		return $select->query();
+		return $select->expression()->statement();
 	}
 	public function update(Dbi_Model $query, array $data) {
 		$components = $query->components();
