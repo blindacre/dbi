@@ -51,7 +51,7 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 	private $_subqueries = array();
 	private $_limit;
 	private static $_joinStack = array();	
-
+	private static $_newest = array();
 	/**
 	 * An array of field names that should be publicly modifiable through a
 	 * Dbi_Record's setArray() function. This whitelist provides protection
@@ -242,7 +242,22 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 	public static function Create() {
 		$cls = get_called_class();
 		$model = new $cls();
-		return new Dbi_Record($model, array());
+		$record = new Dbi_Record($model, array());
+		self::$_newest[$cls] = $record;
+		return $record;
+	}
+	/**
+	 * Get the last Dbi_Record created using Dbi_Model::Create() on the
+	 * called class. If no record has been created, or the created record
+	 * was not saved, this method returns null.
+	 * @return Dbi_Record|null The record, or null if none has been created.
+	 */
+	public static function Newest() {
+		$cls = get_called_class();
+		if (isset(self::$_newest[$cls]) && self::$_newest[$cls]->exists()) {
+			return self::$_newest[$cls];
+		}
+		return null;		
 	}
 	//###################   Iterator special methods.  #######################\\
 	public function rewind() {
