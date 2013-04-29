@@ -51,7 +51,8 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 	private $_subqueries = array();
 	private $_limit;
 	private static $_joinStack = array();	
-
+	private static $_newest = array();
+	private static $_lastModified = array();
 	/**
 	 * An array of field names that should be publicly modifiable through a
 	 * Dbi_Record's setArray() function. This whitelist provides protection
@@ -96,6 +97,11 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 	 * being selected, created, updated, or deleted).
 	 */
 	public function notify($event, $object = null) {
+		if ($event == self::EVENT_BEFORECREATE) {
+			self::$_newest[get_called_class()] = $object;
+		} else if ($event == self::EVENT_BEFORESAVE) {
+			self::$_lastModified[get_called_class()] = $object;
+		}
 		if (isset($this->_eventObservers[$event])) {
 			if (is_null($object)) $object = $this;
 			foreach ($this->_eventObservers[$event] as $observer) {
@@ -242,7 +248,33 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 	public static function Create() {
 		$cls = get_called_class();
 		$model = new $cls();
-		return new Dbi_Record($model, array());
+		$record = new Dbi_Record($model, array());
+		return $record;
+	}
+	/**
+	 * Get the last Dbi_Record created using Dbi_Model::Create() on the
+	 * called class. If no record has been created, or the created record
+	 * was not saved, this method returns null.
+	 * @return Dbi_Record|null The record, or null if none has been created.
+	 */
+	public static function Newest() {
+		$cls = get_called_class();
+		if (isset(self::$_newest[$cls]) && self::$_newest[$cls]->exists()) {
+			return self::$_newest[$cls];
+		}
+		return null;		
+	}
+	/**
+	 * Get the last Dbi_Record modified using Dbi_Record->save(). If no record
+	 * has been created or updated, this method returns null.
+	 * @return Dbi_Record|null The record, or null if none has been modified.
+	 */
+	public static function LastModified() {
+		$cls = get_called_class();
+		if (isset(self::$_lastModified[$cls]) && self::$_lastModified[$cls]->exists()) {
+			return self::$_lastModified[$cls];
+		}
+		return null;		
 	}
 	//###################   Iterator special methods.  #######################\\
 	public function rewind() {
