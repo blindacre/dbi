@@ -356,11 +356,19 @@ class Dbi_Source_MySql extends Dbi_Source_SqlAbstract {
 	public function connection() {
 		return $this->_connection;
 	}
-	public function execute($code) {
-		// TODO: This function should accept prepared statements and arguments.
-		// OR maybe it should just accept a BuildSql object.
-		//$code = str_replace('#__', DBI_PREFIX, $code);
-		//return $this->_execute($code, new Dbi_Model_Anonymous());
+	public function execute() {
+		$args = func_get_args();
+		$code = array_shift($args);
+		// TODO: Should the prefix replacement be done here?
+		$code = str_replace('#__', DBI_PREFIX, $code);
+		$offset = 0;
+		while (count($args)) {
+			$p = array_shift($args);
+			$index = strpos($code, '?', $offset);
+			$escaped = mysql_real_escape_string($p);
+			$result = substr($code, 0, $index) . "'" . $escaped . "'" . substr($code, $index + 1);
+			$offset += strlen($escaped);
+		}
 		$rs = mysql_query($code);
 		if (mysql_error()) {
 			throw new Exception(mysql_error());
