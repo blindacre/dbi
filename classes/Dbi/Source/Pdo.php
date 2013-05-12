@@ -87,7 +87,12 @@ class Dbi_Source_Pdo extends Dbi_Source_SqlAbstract {
 		
 	}
 	public function execute($code) {
-		$stmt = $this->_pdo->query($code);
+		$args = func_get_args();
+		$code = array_shift($args);
+		// TODO: Should the prefix replacement be done here?
+		$code = str_replace('#__', DBI_PREFIX, $code);
+		$stmt = $this->_pdo->prepare($code);
+		$stmt->execute($args);
 		if (!$stmt) {
 			$info = $this->_pdo->errorInfo();
 			throw new Exception($info[2]);
