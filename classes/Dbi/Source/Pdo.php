@@ -110,6 +110,7 @@ class Dbi_Source_Pdo extends Dbi_Source_SqlAbstract {
 		if (count($parameters)) {
 			$index = 1;
 			foreach ($parameters as $p) {
+				if (!is_scalar($p)) $p = json_encode($p);
 				$stmt->bindValue($index, $p);
 				$index++;
 			}
