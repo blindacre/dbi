@@ -354,6 +354,7 @@ class Dbi_Source_MySqli extends Dbi_Source_SqlAbstract {
 			$types = '';
 			$refs = array();
 			foreach ($parameters as &$p) {
+				if (!is_scalar($p)) $p = json_encode($p);
 				$types .= "s";
 				$refs[] =& $p;
 			}
