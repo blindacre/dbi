@@ -366,8 +366,8 @@ class Dbi_Source_MySql extends Dbi_Source_SqlAbstract {
 			$p = array_shift($args);
 			$index = strpos($code, '?', $offset);
 			$escaped = mysql_real_escape_string($p);
-			$result = substr($code, 0, $index) . "'" . $escaped . "'" . substr($code, $index + 1);
-			$offset += strlen($escaped);
+			$code = substr($code, 0, $index) . "'" . $escaped . "'" . substr($code, $index + 1);
+			$offset = $index + strlen($escaped);
 		}
 		$rs = mysql_query($code);
 		if (mysql_error()) {
