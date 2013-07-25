@@ -334,6 +334,7 @@ class Dbi_Source_MySql extends Dbi_Source_SqlAbstract {
 		$parameters = $expression->parameters();
 		while (count($parameters)) {
 			$p = array_shift($parameters);
+			if (!is_scalar($p)) $p = json_encode($p);
 			$index = strpos($result, '?', $offset);
 			$escaped = mysql_real_escape_string($p);
 			$result = substr($result, 0, $index) . "'" . $escaped . "'" . substr($result, $index + 1);

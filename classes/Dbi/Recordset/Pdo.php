@@ -112,7 +112,7 @@ class Dbi_Recordset_Pdo extends Dbi_Recordset {
 	}
 	public function offsetExists($offset) {
 		$index = (int)$offset;
-		return ($index >= 0 && $index < $this->_result->num_rows);
+		return ($index >= 0 && $index < $this->_statement->rowCount());
 	}
 	public function offsetGet($offset) {
 		$index = (int)$offset;
