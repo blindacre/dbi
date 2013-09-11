@@ -267,6 +267,39 @@ class Dbi_Record implements ArrayAccess, Iterator {
 			}
 			$this->_data[$key] = $value;
 		}
+		foreach ($components['subqueries'] as $subquery) {
+			$cls = $subquery['model'];
+			$m = new $cls();
+			$tokens = Dbi_Sql_Tokenizer::Tokenize($subquery['statement']);
+			// TODO: This token replacement is apparently limited in that it
+			// will only work for two levels of subqueries. I say "apparently"
+			// because I'm not completely sure how or why it works.
+			foreach ($tokens as &$t) {
+				$t = str_replace("{$subquery['name']}.", $m->name(). ".", $t);
+				$words = explode('.', $t);
+				if ( (count($words) == 2) && ($words[0] == $this->_model->name()) && ($this->_model->name() != $m->name()) ) {
+					array_shift($words);
+					$t = '?';
+					$subquery['args'][] = $this->_data[$words[0]];
+				} else if ( (count($words) == 2) && ($words[0] == $m->name()) ) {
+					//echo $m->name() . '.' . $record[$m->name() . "." . $words[1]] . "\n";
+					//array_shift($words);
+					//$t = '?';
+					//$subquery['args'][] = implode('.', $words); //$record[$words[0]];
+					//$subquery['args'][] = $m->name() . '.' . $record[$words[1]];
+					//$t = $m->name() . '.' . $words[1];
+				} else if ( (count($words) == 1) && ($this->_model->field($words[0])) ) {
+					$t = '?';
+					$subquery['args'][] = $this->_data[$words[0]];
+				} else {
+					//echo "Model: " . get_class($this->_model) . "\n";
+				}
+			}
+			$statement = implode(' ', $tokens);
+			$args = array_merge(array($statement), $subquery['args']);
+			call_user_func_array(array($m, 'where'), $args);
+			$this->_data[$subquery['name']] = $m;
+		}
 	}
 	//##################   ArrayAccess special methods.  #####################\\
 	public function offsetSet($offset, $value) {
