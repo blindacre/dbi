@@ -27,6 +27,9 @@ class Dbi_Source_MySql extends Dbi_Source_SqlAbstract {
 			$args = array_merge(array(implode(' OR ', $orStatements)), $orParameters);
 			call_user_func_array(array($update, 'where'), $args);
 		}
+		foreach ($components['leftJoins'] as $join) {
+			$update->leftJoin("`{$join['model']->prefix()}{$join['model']->name()}` AS {$join['name']}", implode(' AND ', $join['args']));
+		}
 		// Get rid of fields that are not defined in the schema.
 		// TODO: Should undefined fields generate an error?
 		foreach ($data as $key => $value) {
