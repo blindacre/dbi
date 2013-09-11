@@ -131,7 +131,7 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 	public function updateQuery($data) {
 		//$src = Dbi_Source::GetModelSource($this);
 		//return $src->update($this->query(), $data);
-		return $this->source->update($this);
+		return $this->source->update($this, $data);
 	}
 	/**
 	 * Alias of select().
