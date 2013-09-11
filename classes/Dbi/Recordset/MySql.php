@@ -39,10 +39,10 @@ class Dbi_Recordset_MySql extends Dbi_Recordset {
 		}
 	}
 	public function next() {
-		if (isset($this->_cache[$this->_key + 1])) {
-			$this->_current = $this->_cache[$this->_key + 1];
-			$this->_key++;
-		} else {
+		//if (isset($this->_cache[$this->_key + 1])) {
+		//	$this->_current = $this->_cache[$this->_key + 1];
+		//	$this->_key++;
+		//} else {
 			if ($row = mysql_fetch_assoc($this->_result)) {
 				$joined = array();
 				foreach ($row as $key => $value) {
@@ -66,40 +66,14 @@ class Dbi_Recordset_MySql extends Dbi_Recordset {
 				}
 				$row = array_merge($row, $joined);
 				$record = new Dbi_Record($this->_model, $row);
-				$components = $this->_model->components();
-				$subqueries = $components->subqueries;
-				foreach ($subqueries as $subquery) {
-					$cls = $subquery['model'];
-					$m = new $cls();
-					$tokens = Dbi_Sql_Tokenizer::Tokenize($subquery['statement']);
-					// TODO: This token replacement is apparently limited in that it
-					// will only work for two levels of subqueries. I say "apparently"
-					// because I'm not completely sure how or why it works.
-					foreach ($tokens as &$t) {
-						$t = str_replace("{$subquery['name']}.", $m->name(). ".", $t);
-						$words = explode('.', $t);
-						if ( (count($words) == 2) && ($words[0] == $this->_model->name()) && ($this->_model->name() != $m->name()) ) {
-							array_shift($words);
-							$t = '?';
-							$subquery['args'][] = $record[$words[0]];
-						} else if ( (count($words) == 1) && ($this->_model->field($words[0])) ) {
-							$t = '?';
-							$subquery['args'][] = $record[$words[0]];
-						}
-					}
-					$statement = implode(' ', $tokens);
-					$args = array_merge(array($statement), $subquery['args']);
-					call_user_func_array(array($m, 'where'), $args);
-					$record[$subquery['name']] = $m;
-				}
 				$this->_current = $record;
 				$this->_key++;
-				$this->_cache[$this->_key] = $this->_current;
+				//$this->_cache[$this->_key] = $this->_current;
 			} else {
 				$this->_current = null;
 				$this->_key = false;
 			}
-		}
+		//}
 	}
 	public function valid() {
 		return ($this->_key !== false);
