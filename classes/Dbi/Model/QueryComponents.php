@@ -8,10 +8,12 @@
  * @property array $subqueries
  * @property array $innerJoins
  * @property array $leftJoins
+ * @property array $righttJoins
  * @property array $orders
  * @property array $limit
  * @property array $groups
  * @property array $having
+ * @property array $calculated
  */
 class Dbi_Model_QueryComponents extends PropertyIteratorAbstract {
 	public function __construct() {

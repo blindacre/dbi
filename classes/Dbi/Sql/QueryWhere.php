@@ -29,5 +29,25 @@ abstract class Dbi_Sql_QueryWhere extends Dbi_Sql_Query {
 			}
 		}
 		$this->_wheres[] = new Dbi_Sql_Expression($expr, $modified);
-	}	
+	}
+	private function _join($type, $args) {
+		if (count($args) < 2) {
+			throw new Exception("Joins require at least two arguments: a table and an expression");
+		}
+		$tbl = array_shift($args);
+		$on = array_shift($args);
+		return new Dbi_Sql_Expression("{$type} JOIN {$tbl} ON {$on}", $args);
+	}
+	public function innerJoin() {
+		$args = func_get_args();
+		$this->_joins[] = $this->_join('INNER', $args);
+	}
+	public function leftJoin() {
+		$args = func_get_args();
+		$this->_joins[] = $this->_join('LEFT', $args);
+	}
+	public function rightJoin() {
+		$args = func_get_args();
+		$this->_joins[] = $this->_join('RIGHT', $args);
+	}
 }
