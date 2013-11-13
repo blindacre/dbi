@@ -8,6 +8,11 @@ class Dbi_Sql_Query_Update extends Dbi_Sql_QueryWhere {
 		if (is_null($expr)) return;
 		$this->_sets[] = new Dbi_Sql_Expression($expr, $args);
 	}
+	public function setArray($array) {
+		foreach ($array as $key => $value) {
+			$this->set("{$key} = ?", $value);
+		}
+	}
 	public function expression() {
 		$parameters = array();
 		$sql = 'UPDATE ';
