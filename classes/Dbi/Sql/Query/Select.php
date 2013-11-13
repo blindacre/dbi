@@ -16,7 +16,7 @@ class Dbi_Sql_Query_Select extends Dbi_Sql_QueryWhere {
 		}
 		$tbl = array_shift($args);
 		$on = array_shift($args);
-		return new Dbi_Sql_Expression("{$type} JOIN {$tbl} ON {$on}", $args);
+		return new Dbi_Sql_Expression("{$type} JOIN {$tbl} ON " . ($on ? $on : "TRUE"), $args);
 	}
 	public function innerJoin() {
 		$args = func_get_args();
