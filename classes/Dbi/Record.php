@@ -196,7 +196,18 @@ class Dbi_Record implements ArrayAccess, Iterator {
 	 * @return array An associative array of the data.
 	 */
 	public function getAsArray($withExtra = true) {
-		if ($withExtra) {
+		$result = array();
+		foreach ($this->_data as $key => $value) {
+			if ($withExtra || $this->_model->field($key)) {
+				if ($value instanceof Dbi_Record) {
+					$result[$key] = $value->getAsArray($withExtra);
+				} else {
+					$result[$key] = $value;
+				}
+			}
+		}
+		return $result;
+		/*if ($withExtra) {
 			//return array_merge($this->_data, $this->_extradata);
 			return $this->_data;
 		} else {
@@ -207,7 +218,7 @@ class Dbi_Record implements ArrayAccess, Iterator {
 				}
 			}
 			return $schemed;
-		}
+		}*/
 	}
 	/**
 	 * An alias for getAsArray().
