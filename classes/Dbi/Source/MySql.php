@@ -15,7 +15,8 @@ class Dbi_Source_MySql extends Dbi_Source_SqlAbstract {
 	public function update(Dbi_Model $query, array $data) {
 		self::$queryCount++;
 		$components = $query->components();
-		$update = new BuildSql_Update();
+		//$update = new BuildSql_Update();
+		$update = new Dbi_Sql_Query_Update();
 		$update->table($query->prefix() . $components['table']);
 		foreach ($components['where'] as $where) {
 			$orStatements = array();
@@ -30,23 +31,31 @@ class Dbi_Source_MySql extends Dbi_Source_SqlAbstract {
 		foreach ($components['leftJoins'] as $join) {
 			$update->leftJoin("`{$join['model']->prefix()}{$join['model']->name()}` AS {$join['name']}", implode(' AND ', $join['args']));
 		}
+		foreach ($components['innerJoins'] as $join) {
+			$update->innerJoin("`{$join['model']->prefix()}{$join['model']->name()}` AS {$join['name']}", implode(' AND ', $join['args']));
+		}
 		// Get rid of fields that are not defined in the schema.
 		// TODO: Should undefined fields generate an error?
+		$final = array();
 		foreach ($data as $key => $value) {
-			if (is_null($query->field($key))) {
-				unset($data[$key]);
-			} else {
+			if (!is_null($query->field($key))) {
 				// Convert arrays to JSON
 				// (Objects depend on __toString() for conversion)
 				if ( (is_array($value)) ) {
-					$data[$key] = json_encode($value);
+					$value = json_encode($value);
 				}
+				if (strpos($key, '.') === false) {
+					$key = '`' . $query->prefix() . $components['table'] . '`.`' . $key . '`';
+				}
+				$full_qual[$key] = $value;
 			}
 		}
-		$update->set($data);
-		mysql_query($update->query());
+		$update->setArray($full_qual);
+		//echo $update->expression();exit;
+		//mysql_query($update->expression());
+		$this->_execute($update, $query);
 		if (mysql_error()) {
-			echo "{$update->query()}<br/>";
+			echo $update->expression() . '<br/>';
 			throw new Exception(mysql_error());
 		}
 	}
@@ -349,6 +358,7 @@ class Dbi_Source_MySql extends Dbi_Source_SqlAbstract {
 		$code = $this->_bindParameters($sql);
 		$rs = mysql_query($code);
 		if (mysql_error()) {
+			echo $code;
 			throw new Exception(mysql_error());
 		}
 		return new Dbi_Recordset_MySql($model, $rs);
@@ -360,6 +370,9 @@ class Dbi_Source_MySql extends Dbi_Source_SqlAbstract {
 	public function connection() {
 		return $this->_connection;
 	}
+	/**
+	 * @return \Dbi_Recordset_MySql
+	 */
 	public function execute() {
 		$args = func_get_args();
 		$code = array_shift($args);

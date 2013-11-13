@@ -17,7 +17,7 @@ abstract class Dbi_Source_SqlAbstract extends Dbi_Source {
 				$subquery = $innerJoin['model'];
 				$subcomponents = $subquery->components();
 				$subcomponents['table'] = $innerJoin['name'];
-				$subs[] = array('query' => $subquery, 'components' => $subcomponents, 'forceLeft' => false);
+				$subs[] = array('query' => $subquery, 'components' => $subcomponents, 'forceLeft' => $forceLeft);
 			}
 			foreach ($components['leftJoins'] as $join) {
 				$subquery = $join['model'];
@@ -25,6 +25,15 @@ abstract class Dbi_Source_SqlAbstract extends Dbi_Source {
 				$subcomponents['table'] = $join['name'];
 				$subs[] = array('query' => $subquery, 'components' => $subcomponents, 'forceLeft' => true);
 			}
+			foreach ($components['rightJoins'] as $join) {
+				$subquery = $join['model'];
+				$subcomponents = $subquery->components();
+				$subcomponents['table'] = $join['name'];
+				$subs[] = array('query' => $subquery, 'components' => $subcomponents, 'forceLeft' => true);
+			}
+		}
+		foreach ($components['calculated'] as $calc) {
+			$select->field($calc);
 		}
 		// Where criteria
 		$fields = array_keys($query->fields());
@@ -48,27 +57,33 @@ abstract class Dbi_Source_SqlAbstract extends Dbi_Source {
 			$args = array_merge(array(implode(' OR ', $orStatements)), $orParameters);
 			call_user_func_array(array($select, 'where'), $args);
 		}
-		foreach ($components['innerJoins'] as $join) {
-			$args = $join['args'];
-			array_unshift($args, $join['model']->prefix() . $join['model']->name() . ' AS `' . $parent . $join['name'] . '`');
-			$tokens = Dbi_Sql_Tokenizer::Tokenize($args[1]);
-			foreach ($tokens as &$token) {
-				if (in_array($token, $fields)) {
-					$token = '`' . ($parent ? substr($parent, 0, -1) : $components['table']) . "`.`{$token}`";
-				} else if (substr($token, 0, strlen($join['name']) + 1) == "{$join['name']}.") {
-					$token = "`{$parent}{$join['name']}`.`" . substr($token, strlen($join['name']) + 1) . "`";
+		if (!$forceLeft) {
+			foreach ($components['innerJoins'] as $join) {
+				$args = $join['args'];
+				array_unshift($args, $join['model']->prefix() . $join['model']->name() . ' AS `' . $parent . $join['name'] . '`');
+				$tokens = Dbi_Sql_Tokenizer::Tokenize($args[1]);
+				foreach ($tokens as &$token) {
+					if (in_array($token, $fields)) {
+						$token = '`' . ($parent ? substr($parent, 0, -1) : $components['table']) . "`.`{$token}`";
+					} else if (substr($token, 0, strlen($join['name']) + 1) == "{$join['name']}.") {
+						$token = "`{$parent}{$join['name']}`.`" . substr($token, strlen($join['name']) + 1) . "`";
+					} else {
+						//echo "token {$token} for " . get_class($join['model']) . "<br/>";
+					}
+				}
+				$args[1] = implode(' ', $tokens);
+				if ($forceLeft) {
+					call_user_func_array(array($select, 'leftJoin'), $args);
 				} else {
-					//echo "token {$token} for " . get_class($join['model']) . "<br/>";
+					call_user_func_array(array($select, 'innerJoin'), $args);
 				}
 			}
-			$args[1] = implode(' ', $tokens);
-			if ($forceLeft) {
-				call_user_func_array(array($select, 'leftJoin'), $args);
-			} else {
-				call_user_func_array(array($select, 'innerJoin'), $args);
-			}
 		}
-		foreach ($components['leftJoins'] as $join) {
+		$leftJoins = $components['leftJoins'];
+		if ($forceLeft) {
+			$leftJoins = array_merge($leftJoins, $components['innerJoins']);
+		}
+		foreach ($leftJoins as $join) {
 			$args = $join['args'];
 			array_unshift($args, $join['model']->prefix() . $join['model']->name() . ' AS `' . $parent . $join['name'] . '`');
 			$tokens = Dbi_Sql_Tokenizer::Tokenize($args[1]);
@@ -82,6 +97,21 @@ abstract class Dbi_Source_SqlAbstract extends Dbi_Source {
 			}
 			$args[1] = implode(' ', $tokens);
 			call_user_func_array(array($select, 'leftJoin'), $args);
+		}
+		foreach ($components['rightJoins'] as $join) {
+			$args = $join['args'];
+			array_unshift($args, $join['model']->prefix() . $join['model']->name() . ' AS `' . $parent . $join['name'] . '`');
+			$tokens = Dbi_Sql_Tokenizer::Tokenize($args[1]);
+			foreach ($tokens as &$token) {
+				if (in_array($token, $fields)) {
+					//$token = "`{$components['table']}`.`{$token}`";
+					$token = '`' . ($parent ? substr($parent, 0, -1) : $components['table']) . "`.`{$token}`";
+				} else if (substr($token, 0, strlen($join['name']) + 1) == "{$join['name']}.") {
+					$token = "`{$parent}{$join['name']}`.`" . substr($token, strlen($join['name']) + 1) . "`";
+				}
+			}
+			$args[1] = implode(' ', $tokens);
+			call_user_func_array(array($select, 'rightJoin'), $args);
 		}
 		foreach ($components['groups'] as $group) {
 			$select->group($group);
