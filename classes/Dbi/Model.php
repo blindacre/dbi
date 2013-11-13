@@ -43,12 +43,14 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 	// Query properties
 	private $_innerJoins = array();
 	private $_leftJoins = array();
+	private $_rightJoins = array();
 	private $_wheres = array();
 	private $_group = array();
 	private $_haves = array();
 	private $_orders = array();
 	private $_fields = array();
 	private $_subqueries = array();
+	private $_calculated = array();
 	private $_limit;
 	private static $_joinStack = array();	
 	private static $_newest = array();
@@ -377,6 +379,38 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 			'args' => $args
 		);
 	}
+	public function rightJoin() {
+		$args = func_get_args();
+		$name = array_shift($args);
+		$joined = array_shift($args);
+		if (!$name) $name = '___' . $joined;
+		//if (count(array_keys(self::$_joinStack, $joined)) > 1) {
+		if (in_array($joined, self::$_joinStack)) {
+			return;
+		}
+		self::$_joinStack[] = get_class($this);
+		self::$_joinStack[] = $joined;
+		$model = null;
+		if (is_string($joined)) {
+			if (is_subclass_of($joined, 'Dbi_Model')) {
+				$model = new $joined();
+			}
+		} else {
+			if (is_subclass_of($joined, 'Dbi_Model')) {
+				$model = $joined;
+			}
+		}
+		array_pop(self::$_joinStack);
+		array_pop(self::$_joinStack);
+		if (is_null($model)) {
+			throw new Exception('Queries can only join models.');
+		}
+		$this->_rightJoins[] = array(
+			'name' => $name,
+			'model' => $model,
+			'args' => $args
+		);
+	}
 	/**
 	 * Add a subquery to the query. The subquery can be executed on demand for
 	 * each record returned by the parent query.
@@ -496,6 +530,9 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 			}
 		}
 	}
+	public function calculateField($name, $calculation) {
+		$this->_calculated[] = "{$calculation} AS {$name}";
+	}
 	/**
 	 * Get an object containing the model's query components.
 	 * @return Dbi_Model_QueryComponents A property iterator of the component data.
@@ -508,10 +545,12 @@ abstract class Dbi_Model extends Dbi_Schema implements Event_SubjectInterface, I
 		$components->subqueries = $this->_subqueries;
 		$components->innerJoins = $this->_innerJoins;
 		$components->leftJoins = $this->_leftJoins;
+		$components->rightJoins = $this->_rightJoins;
 		$components->orders = $this->_orders;
 		$components->limit = $this->_limit;
 		$components->groups = $this->_group;
 		$components->having = $this->_haves;
+		$components->calculated = $this->_calculated;
 		return $components;
 	}
 	/**
