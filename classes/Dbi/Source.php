@@ -36,6 +36,9 @@ abstract class Dbi_Source {
 	 * @param boolean $alterExistingFields If true, alter existing fields to match the provided schema.
 	 */
 	abstract public function configureSchema(Dbi_Schema $schema, $alterExistingFields = false);
+	/**
+	 * @return Dbi_Recordset
+	 */
 	abstract public function execute();
 	/**
 	 * Set the DBI source to be used for all models that have not specified
