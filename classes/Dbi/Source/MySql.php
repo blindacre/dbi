@@ -350,7 +350,7 @@ class Dbi_Source_MySql extends Dbi_Source_SqlAbstract {
 			$index = strpos($result, '?', $offset);
 			$escaped = mysql_real_escape_string($p);
 			$result = substr($result, 0, $index) . "'" . $escaped . "'" . substr($result, $index + 1);
-			$offset += strlen($escaped);
+			$offset = $index + strlen($escaped) + 2;
 		}
 		return $result;
 	}
