@@ -39,15 +39,19 @@ class Dbi_Source_MySql extends Dbi_Source_SqlAbstract {
 		$final = array();
 		foreach ($data as $key => $value) {
 			if (!is_null($query->field($key))) {
-				// Convert arrays to JSON
-				// (Objects depend on __toString() for conversion)
-				if ( (is_array($value)) ) {
-					$value = json_encode($value);
+				if (is_null($query->field($key))) {
+					unset($data[$key]);
+				} else {
+					// Convert arrays to JSON
+					// (Objects depend on __toString() for conversion)
+					if ( (is_array($value)) ) {
+						$value = json_encode($value);
+					}
+					if (strpos($key, '.') === false) {
+						$key = '`' . $query->prefix() . $components['table'] . '`.`' . $key . '`';
+					}
+					$full_qual[$key] = $value;
 				}
-				if (strpos($key, '.') === false) {
-					$key = '`' . $query->prefix() . $components['table'] . '`.`' . $key . '`';
-				}
-				$full_qual[$key] = $value;
 			}
 		}
 		$update->setArray($full_qual);
